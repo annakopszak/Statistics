@@ -1,0 +1,120 @@
+---
+title: "Ocena rozwoju na podstawie danych sukces/porazka"
+author: "Anna Kopszak"
+date: "26 05 2023"
+output: ioslides_presentation
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Postać danych
+
+Ramka danych o kolumnach:
+
+- Problem - wektor zawierajacy informacje o tym czy wystapil problem (1) czy nie (0) w procesie uczenia
+- Date - wektor o długości 398 wygenerowany na potrzeby symulacji. Daty są kolejnymi dniami od pierwszego stycznia 2016 roku.
+
+
+## Porównanie wykresów
+```{r, echo=FALSE, include=FALSE}
+library(dplyr)
+library(ggplot2)
+
+# Problem <- c(1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,1,0,1,0,1,1,1,1,0,1,1,0,1,1,0,1,1,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,1,0,0,1,0,1,0,0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,1,1,0,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,1,0,1,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,1,1,0,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,1,1,1,0,0,0,0,1,0,1,0,0,1,0,0,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,0,0,0,1,0,0,1,1,0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,1,0,0,0,0,1,1,1,0,0,0,1,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,1,0,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0)
+Problem <- c(0,0,0,0,0,0,0,1,1,1,0,0,0,1,0,0,1,0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,1,0,1,0,0,1,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,0,1,0,1,0,0,0,1,1,1,1,1,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0,1,0,0,0,0,0,1,1,1,0,1,1,0,0,0,0,0,0,0,0,1,0,0,1,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,1,1,0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,1,1,1,0,0,0,0,0,0,1,0,0,1,1,1,0,1,0,0,0,1,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,1,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1)
+
+date <- seq(as.Date("2016-01-01"), by = "day", length.out = length(Problem))
+
+data <- data.frame(date, Problem)
+```
+
+```{r echo=FALSE}
+fluidRow(
+    column(width = 6,
+           selectInput("plot_type", label = "Procedura:",
+                        choices = c("Proporcja ruchoma", "Coraz większe próbki", "Miesiącami", "Grupami"),
+                        selected = "Proporcja ruchoma")
+    ),
+    column(width = 6,
+           # Add the slider input for choosing the window size
+           sliderInput("window_size", label = "Długość przedziału dla proporcji ruchomej:",
+                       min = 1, max = 100, value = 27)
+    )
+  )
+renderPlot({
+  if (input$plot_type == "Proporcja ruchoma") {
+    # Calculate moving averages 
+    window_size <- input$window_size  # Use the value from the slider
+    data$moving_avg <- stats::filter(data$Problem, rep(1/window_size, window_size), sides = 2)
+    
+    # Convert data to a data frame
+    data_df <- data.frame(date = data$date, Problem = data$Problem, moving_avg = data$moving_avg)
+    
+    # Plot original data and moving averages
+    ggplot(data_df, aes(x = date)) +
+      geom_point(aes(y = Problem), color = "blue", size = 2) +
+      geom_line(aes(y = moving_avg), color = "red", size = 2) +
+      labs(x = "Date of Operation", y = "Problem", title = "Original Data and Moving Averages") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ylim(0, 1) +
+      scale_color_manual(values = c("blue", "red")) +
+      guides(color = guide_legend(override.aes = list(linetype = c(NA, 1), shape = c(16, NA)))) +
+      theme(legend.position = "topleft")
+  } else if (input$plot_type == "Coraz większe próbki") {
+    # Calculate proportions for different subsets
+    subset_sizes <- seq(1, nrow(data), by = 1)
+    proportions <- sapply(subset_sizes, function(n) mean(data$Problem[1:n]))
+    
+    # Create a data frame for proportions
+    proportions_df <- data.frame(subset_sizes, proportions)
+    
+    # Plot proportions
+    ggplot(proportions_df, aes(x = subset_sizes, y = proportions)) +
+      geom_point(color = "blue", size = 2) +
+      labs(x = "Subset Size", y = "Proportion (1 to 0)", title = "Proportion of Problemful Operations by Subset Size") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ylim(0, 1)
+  } else if (input$plot_type == "Miesiącami") {
+    # Extract month and year from the date
+    data$month <- format(data$date, "%Y-%m")
+    
+    # Calculate the proportion of Problemful operations for each month
+    proportions <- data %>%
+      group_by(month) %>%
+      summarise(proportion = mean(Problem))
+    
+    # Plot the proportions
+    ggplot(proportions, aes(x = month, y = proportion)) +
+      geom_line(color = "blue") +
+      geom_point(color = "blue", size = 2) +
+      labs(x = "Month", y = "Proportion", title = "Proportion of Problemful Operations by Month") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  } else if (input$plot_type == "Grupami") {
+    # Divide the data into groups of 27 elements
+    groups <- split(data, ceiling(seq_along(data$date) / 27))
+    
+    # Calculate the proportion of Problemful operations for each group
+    proportions <- lapply(groups, function(group) {
+      proportion <- mean(group$Problem)
+     data.frame(group = unique(group$date[1]), proportion)
+    }) %>%
+      bind_rows()
+    
+    # Plot the proportions as points with y-axis range from 0 to 1
+    ggplot(proportions, aes(x = group, y = proportion)) +
+      geom_point(color = "blue", size = 2) +
+      labs(x = "Group", y = "Proportion", title = "Proportion of Problemful Operations by Group") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ylim(0, 1)
+  }
+})
+
+
+```
+
+
+
+

@@ -49,10 +49,8 @@ renderPlot({
     window_size <- input$window_size  # Use the value from the slider
     data$moving_avg <- stats::filter(data$Problem, rep(1/window_size, window_size), sides = 2)
     
-    # Convert data to a data frame
     data_df <- data.frame(date = data$date, Problem = data$Problem, moving_avg = data$moving_avg)
     
-    # Plot original data and moving averages
     ggplot(data_df, aes(x = date)) +
       geom_point(aes(y = Problem), color = "blue", size = 2) +
       geom_line(aes(y = moving_avg), color = "red", size = 2) +
@@ -67,10 +65,8 @@ renderPlot({
     subset_sizes <- seq(1, nrow(data), by = 1)
     proportions <- sapply(subset_sizes, function(n) mean(data$Problem[1:n]))
     
-    # Create a data frame for proportions
     proportions_df <- data.frame(subset_sizes, proportions)
     
-    # Plot proportions
     ggplot(proportions_df, aes(x = subset_sizes, y = proportions)) +
       geom_point(color = "blue", size = 2) +
       labs(x = "Subset Size", y = "Proportion (1 to 0)", title = "Proportion of Problemful Operations by Subset Size") +
@@ -80,12 +76,10 @@ renderPlot({
     # Extract month and year from the date
     data$month <- format(data$date, "%Y-%m")
     
-    # Calculate the proportion of Problemful operations for each month
     proportions <- data %>%
       group_by(month) %>%
       summarise(proportion = mean(Problem))
     
-    # Plot the proportions
     ggplot(proportions, aes(x = month, y = proportion)) +
       geom_line(color = "blue") +
       geom_point(color = "blue", size = 2) +
@@ -95,14 +89,12 @@ renderPlot({
     # Divide the data into groups of 27 elements
     groups <- split(data, ceiling(seq_along(data$date) / 27))
     
-    # Calculate the proportion of Problemful operations for each group
     proportions <- lapply(groups, function(group) {
       proportion <- mean(group$Problem)
      data.frame(group = unique(group$date[1]), proportion)
     }) %>%
       bind_rows()
     
-    # Plot the proportions as points with y-axis range from 0 to 1
     ggplot(proportions, aes(x = group, y = proportion)) +
       geom_point(color = "blue", size = 2) +
       labs(x = "Group", y = "Proportion", title = "Proportion of Problemful Operations by Group") +

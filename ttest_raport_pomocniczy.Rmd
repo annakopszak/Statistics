@@ -1,0 +1,106 @@
+---
+title: "Untitled"
+author: "Anna Kopszak"
+date: "2024-02-28"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+# Define reactive expression to store input values
+data_input <- reactive({
+  list(
+    liczba_symulacji = input$liczba_symulacji,
+    srednia = input$srednia,
+    wariancja = input$wariancja
+  )
+})
+
+# Define reactive expression to store computed values
+computed_values <- reactive({
+  liczba_symulacji <- data_input()$liczba_symulacji
+  dlugosc_wektora <- 1000
+  pwartosci_t_testu <- rep(NA, liczba_symulacji)
+  numer_symulacji <- rep(NA, liczba_symulacji)
+  zmienna_jakosciowa <- c(rep(1, dlugosc_wektora/2), rep(0, dlugosc_wektora/2))
+  
+  zmienne_ilosciowe <- list()
+  
+  for(i in 1:liczba_symulacji)
+  {
+    zmienna_ilosciowa <- c(rnorm(dlugosc_wektora/2, data_input()$srednia, data_input()$wariancja),
+                           rnorm(dlugosc_wektora/2, data_input()$srednia, data_input()$wariancja))
+    zmienne_ilosciowe[[i]] <- zmienna_ilosciowa
+    d <- data.frame(cbind(zmienna_ilosciowa, zmienna_jakosciowa))
+    wynik <- t.test(zmienna_ilosciowa ~ zmienna_jakosciowa, data = d)
+    pwartosci_t_testu[i] <- wynik$p.value
+    numer_symulacji[i] <- i
+  }
+  
+  list(
+    pwartosci_t_testu = pwartosci_t_testu,
+    zmienne_ilosciowe = zmienne_ilosciowe
+  )
+})
+
+```
+
+# Dane
+Generujemy dwa wektory z rozkĹ‚adu normalnego z jednakowÄ… Ĺ›redniÄ… i jednakowÄ… wariancjÄ…:
+
+```{r, echo=FALSE}
+inputPanel(
+  selectInput("liczba_symulacji", label = "Liczba symulacji",
+              choices = c(10, 100, 1000), selected = 10),
+  numericInput("srednia", label = "srednia", min= 0, max = 1000, value = 0),
+  numericInput("wariancja", label = "wariancja", min= 0, max = 1000, value = 1),
+  numericInput("numer_wektora_istotne", label = "numer_wektora_istotne", min= 0, max = 1000, value = 1)
+)
+```
+Przeprowadzmy symylacjÄ™, liczymy ttesty, H0: nie ma rĂłĹĽnic.
+Tak wyglÄ…dajÄ… p-wartoĹ›ci ttestu :
+
+```{r, echo=FALSE}
+renderPlot({
+  library(ggplot2)
+  
+  data <- computed_values()
+  
+  liczba_symulacji <- data_input()$liczba_symulacji
+  
+  w <- data.frame(numer_symulacji = 1:liczba_symulacji, pwartosci_t_testu = data$pwartosci_t_testu)
+  
+  ggplot(w, aes(numer_symulacji, pwartosci_t_testu)) +
+    geom_point(size=0.75) +
+    geom_hline(yintercept=0.05, linetype="dashed", color = "red")+
+    theme_minimal()
+})
+
+```
+różne
+
+```{r, echo=FALSE}
+renderPlot({
+  dlugosc_wektora <- 1000
+  zmienna_jakosciowa <- c(rep(1, dlugosc_wektora/2), rep(0, dlugosc_wektora/2))
+  data <- computed_values()
+  pwartosci_t_testu <- data$pwartosci_t_testu
+  zmienne_ilosciowe <- data$zmienne_ilosciowe
+  
+  istotne <- which(pwartosci_t_testu < 0.05)
+  zmienne_ilosciowe <- zmienne_ilosciowe[istotne]
+  numer_wektora_istotne <- input$numer_wektora_istotne
+  wektor_ilosciowy <- zmienne_ilosciowe[[numer_wektora_istotne]]
+  
+  w2 <- as.data.frame(cbind(wektor_ilosciowy, zmienna_jakosciowa))
+  
+  ggplot(w2, aes(wektor_ilosciowy, group = zmienna_jakosciowa, width=0.2)) +
+    geom_boxplot(size=0.2)+
+    theme_minimal()
+})
+
+```
